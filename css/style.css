@@ -1,0 +1,59 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  
+  .map-container {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap; /* Allow wrapping for smaller screens */
+  }
+  
+  .map-wrapper {
+    width: 50%;
+    padding: 10px;
+    box-sizing: border-box; /* Ensure padding is included in width */
+  }
+  
+  .map-wrapper h3 {
+    text-align: center;
+    margin: 0 0 10px 0; /* Add some spacing below the title */
+  }
+  
+  #map1, #map2 {
+    height: 500px;
+    width: 100%;
+    border: 1px solid #ccc; /* Add a border for better visibility */
+  }
+  
+  /* Responsive design for smaller screens */
+  @media (max-width: 768px) {
+    .map-wrapper {
+      width: 100%; /* Full width on smaller screens */
+    }
+  }
+  
+  /* Legend styling */
+  .info.legend {
+    background: white;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    line-height: 18px;
+    color: #555;
+  }
+  
+  .info.legend strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+  
+  .info.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+  }

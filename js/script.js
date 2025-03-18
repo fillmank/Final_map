@@ -1,81 +1,107 @@
-// Initialize the proportional symbols map
-const map1 = L.map('map1').setView([37.8, -96], 4); // Center on the US
+// Initialize the map
+const map = L.map('map').setView([37.8, -96], 4);
 
-// Add a base tile layer to map1
+// Add a base layer (e.g., OpenStreetMap)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors'
-}).addTo(map1);
+}).addTo(map);
 
+// Load states boundary layer
+const statesLayer = L.geoJSON.ajax('data/states.geojson', {
+  style: { color: '#555', weight: 2, fillOpacity: 0 }
+}).addTo(map);
 
-let wildfires;
-
-// Load the GeoJSON data
-d3.json("fires.geojson").then(data => {
-    // Simplify the GeoJSON data using Turf.js
-    const simplifiedData = {
-        type: "FeatureCollection",
-        features: data.features.map(feature => {
-            // Simplify only polygon or line geometries (not points)
-            if (feature.geometry.type === "Polygon" || feature.geometry.type === "LineString") {
-                return turf.simplify(feature, { tolerance: 0.01, highQuality: true });
-            }
-            return feature;
-        })
-    };
-
-    // Assign the simplified data to the wildfires variable
-    wildfires = simplifiedData;
-
-    // Initialize the map
-    initMap();
+// Load aggregated fires layer
+const agFiresLayer = L.geoJSON.ajax('data/ag_fires.geojson', {
+  pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 5, color: 'red', fillOpacity: 0.5 })
 });
 
-function initMap() {
-    const map = L.map('map').setView([37.8, -96], 4); // Center on the US
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    // Add wildfire data to the map
-    addWildfires(map, 2005); // Start with the year 2005
-}
-
-function addWildfires(map, year) {
-    // Clear existing layers
-    if (map.wildfireLayer) {
-        map.removeLayer(map.wildfireLayer);
-    }
-
-    // Filter data for the selected year
-    const yearData = wildfires.features.filter(feature => feature.properties.FIRE_YEAR === year);
-
-    // Create a layer group for the wildfires
-    map.wildfireLayer = L.layerGroup().addTo(map);
-
-    yearData.forEach(feature => {
-        const { LATITUDE, LONGITUDE } = feature.properties;
-        const { FIRE_SIZE } = feature.properties;
-
-        // Create a circle marker with radius proportional to fire size
-        L.circleMarker([LATITUDE, LONGITUDE], {
-            radius: Math.sqrt(FIRE_SIZE) * 0.01, // Adjust scaling factor as needed
-            fillColor: "#ff7800",
-            color: "#000",
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).bindPopup(`<b>State: ${feature.properties.STATE}</b><br>
-                     Size: ${FIRE_SIZE} acres<br>
-                     Cause: ${feature.properties.NWCG_CAUSE_CLASSIFICATION}`)
-          .addTo(map.wildfireLayer);
-    });
-}
-
-const slider = document.getElementById('slider');
-const yearDisplay = document.getElementById('year');
-
-slider.addEventListener('input', () => {
-    const year = slider.value;
-    yearDisplay.textContent = year;
-    addWildfires(map, parseInt(year));
+// Load air quality layer
+const aqLayer = L.geoJSON.ajax('data/aq_yearly.geojson', {
+  style: (feature) => ({
+    fillColor: getColor(feature.properties.aq_value), // Define getColor function based on air quality value
+    weight: 1,
+    opacity: 1,
+    color: 'white',
+    fillOpacity: 0.7
+  })
 });
+
+// Function to get color based on air quality value
+function getColor(aqValue) {
+  return aqValue > 50 ? '#800026' :
+         aqValue > 40 ? '#BD0026' :
+         aqValue > 30 ? '#E31A1C' :
+         aqValue > 20 ? '#FC4E2A' :
+         aqValue > 10 ? '#FD8D3C' :
+                        '#FEB24C';
+}
+
+// Initialize TimeDimension
+const timeDimension = new L.TimeDimension({
+    timeInterval: "2005-01-01/2020-12-31",
+    period: "P1Y", // Yearly interval
+  });
+  
+  // Add TimeDimension to the map
+  const timeDimensionControl = new L.Control.TimeDimension({
+    playerOptions: {
+      transitionTime: 1000,
+      loop: true,
+    },
+  });
+  map.addControl(timeDimensionControl);
+  
+  // Add fires layer to TimeDimension
+  const agFiresTimeLayer = L.timeDimension.layer.geoJson(agFiresLayer, {
+    updateTime: (feature) => new Date(feature.properties.year).getTime(),
+  }).addTo(map);
+  
+  // Add air quality layer to TimeDimension
+  const aqTimeLayer = L.timeDimension.layer.geoJson(aqLayer, {
+    updateTime: (feature) => new Date(feature.properties.year).getTime(),
+  }).addTo(map);
+
+  // Add toggle button for air quality
+const toggleButton = document.createElement('button');
+toggleButton.innerHTML = 'Toggle Air Quality';
+toggleButton.className = 'btn btn-secondary';
+document.body.insertBefore(toggleButton, map);
+
+let aqVisible = true;
+
+toggleButton.addEventListener('click', () => {
+  aqVisible = !aqVisible;
+  if (aqVisible) {
+    aqTimeLayer.addTo(map);
+  } else {
+    map.removeLayer(aqTimeLayer);
+  }
+});
+
+// Adjust air quality layer opacity when fires are displayed
+agFiresTimeLayer.on('add', () => {
+  aqLayer.setStyle({ fillOpacity: 0.3 });
+});
+
+agFiresTimeLayer.on('remove', () => {
+  aqLayer.setStyle({ fillOpacity: 0.7 });
+});
+
+const legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = () => {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML = `
+    <h4>Air Quality</h4>
+    <div><span style="background:#FEB24C"></span>0-10</div>
+    <div><span style="background:#FD8D3C"></span>10-20</div>
+    <div><span style="background:#FC4E2A"></span>20-30</div>
+    <div><span style="background:#E31A1C"></span>30-40</div>
+    <div><span style="background:#BD0026"></span>40-50</div>
+    <div><span style="background:#800026"></span>50+</div>
+  `;
+  return div;
+};
+
+legend.addTo(map);
