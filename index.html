@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Map with Proportional Symbols</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #slider {
+            margin-top: 10px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Map for wildfires -->
+    <div id="map"></div>
+    <input type="range" id="slider" min="2005" max="2023" value="2005" step="1">
+    <span id="year">2005</span>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script>
+        let wildfires;
+        let map;
+
+        // Function to calculate radius based on fire size
+        function getRadius(fireSize) {
+            return Math.sqrt(fireSize) * 0.02; // Adjust scaling factor as needed
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            d3.json("/data/fires.geojson").then(data => {
+                // Simplify the GeoJSON data using Turf.js
+                const simplifiedData = {
+                    type: "FeatureCollection",
+                    features: data.features.map(feature => {
+                        if (feature.geometry.type === "Polygon" || feature.geometry.type === "LineString") {
+                            return turf.simplify(feature, { tolerance: 0.01, highQuality: true });
+                        }
+                        return feature;
+                    })
+                };
+
+                wildfires = simplifiedData;
+                initMap();
+            });
+        });
+
+        function initMap() {
+            map = L.map('map').setView([37.8, -96], 4); // Center on the US
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Set up the slider
+            const slider = document.getElementById('slider');
+            const yearDisplay = document.getElementById('year');
+
+            // Calculate min and max years from the data
+            const years = wildfires.features.map(feature => feature.properties.FIRE_YEAR);
+            const minYear = Math.min(...years);
+            const maxYear = Math.max(...years);
+
+            // Set slider range
+            slider.min = minYear;
+            slider.max = maxYear;
+            slider.value = minYear;
+            yearDisplay.textContent = minYear;
+
+            // Add initial data
+            addWildfires(map, minYear);
+
+            // Update the map when the slider changes
+            slider.addEventListener('input', () => {
+                const year = slider.value;
+                yearDisplay.textContent = year;
+                addWildfires(map, parseInt(year));
+            });
+        }
+
+        function addWildfires(map, year) {
+            // Clear existing layers
+            if (map.wildfireLayer) {
+                map.removeLayer(map.wildfireLayer);
+            }
+
+            // Filter data for the selected year
+            const yearData = wildfires.features.filter(feature => feature.properties.FIRE_YEAR === year);
+
+            // Create a layer group for the wildfires
+            map.wildfireLayer = L.layerGroup().addTo(map);
+
+            yearData.forEach(feature => {
+                const { LATITUDE, LONGITUDE } = feature.properties;
+                const { FIRE_SIZE, STATE, NWCG_CAUSE_CLASSIFICATION } = feature.properties;
+
+                // Create a circle marker with radius proportional to fire size
+                L.circleMarker([LATITUDE, LONGITUDE], {
+                    radius: getRadius(FIRE_SIZE), // Use fire size for radius
+                    fillColor: "#ff7800",
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).bindPopup(`<b>State: ${STATE}</b><br>
+                             Size: ${FIRE_SIZE} acres<br>
+                             Cause: ${NWCG_CAUSE_CLASSIFICATION}`)
+                  .addTo(map.wildfireLayer);
+            });
+        }
+    </script>
+</body>
+</html>
