@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Map</title>
+  <title>Leaflet TimeDimension Demo</title>
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.5.1/dist/leaflet.css" />
   <!-- Leaflet TimeDimension CSS -->
-  <link rel="stylesheet" href="lib/Leaflet.TimeDimension-1.1.1/dist/leaflet.timedimension.control.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
   <style>
-    #map { height: 600px; }
+    #map { height: 600px; width: 100%; }
     .legend { padding: 10px; background: white; border-radius: 5px; }
     h1 { text-align: center; margin: 20px 0; }
   </style>
@@ -18,12 +18,14 @@
   <h1>Aggregated Fires and Air Quality (2005-2020)</h1>
   <div id="map"></div>
   <!-- Leaflet JS -->
-  <script src="lib/leaflet/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.5.1/dist/leaflet.js"></script>
+  <!-- Iso8601 JS (required for TimeDimension) -->
+  <script src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
   <!-- Leaflet TimeDimension JS -->
-  <script src="lib/Leaflet.TimeDimension-1.1.1/dist/leaflet.timedimension.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
   <!-- Leaflet AJAX -->
-  <script src="lib/leaflet.ajax.min.js"></script>
-  <!-- Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js"></script>
+  <!-- Your Script -->
   <script src="js/script.js"></script>
 </body>
 </html>
